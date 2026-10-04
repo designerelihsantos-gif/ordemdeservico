@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Ordem de Serviço</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        h2 { margin-top: 0; font-size: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; }
+        
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 4px; }
+        input, textarea, select {
+            width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box;
+        }
+
+        .item-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .item-row input[name="desc"] { flex: 2; }
+        .item-row input[name="qtd"], .item-row input[name="preco"] { flex: 1; }
+
+        button {
+            background-color: var(--primary); color: white; border: none; padding: 10px 15px;
+            border-radius: 4px; cursor: pointer; font-weight: 500; width: 100%; margin-top: 10px;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        .btn-add { background-color: #10b981; margin-bottom: 10px; }
+        .btn-add:hover { background-color: #059669; }
+
+        /* Estilo da O.S. (Visualização) */
+        .preview { font-size: 0.9rem; border: 1px solid #cbd5e1; height: fit-content; }
+        .os-header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+        .os-title { font-size: 1.5rem; font-weight: bold; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .section-box { border: 1px solid #cbd5e1; padding: 10px; border-radius: 4px; }
+        .section-title { font-weight: bold; margin-bottom: 5px; text-transform: uppercase; font-size: 0.8rem; color: #64748b; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table th, table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+        table th { background-color: #f1f5f9; }
+        .total-row { text-align: right; font-weight: bold; font-size: 1.1rem; margin-top: 15px; }
+
+        @media print {
+            body * { visibility: hidden; }
+            .preview, .preview * { visibility: visible; }
+            .preview { position: absolute; left: 0; top: 0; width: 100%; border: none; padding: 0; }
+            button, .panel:not(.preview) { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Formulário de Entrada -->
+    <div class="panel">
+        <h2>Nova Ordem de Serviço</h2>
+        
+        <div class="grid-2" style="grid-template-columns: 2fr 1fr; gap: 8px;">
+            <div class="form-group">
+                <label>Número da O.S.</label>
+                <input type="text" id="osNum" value="001" oninput="updateOS()">
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="osStatus" onchange="updateOS()">
+                    <option value="Em Aberto">Em Aberto</option>
+                    <option value="Em Andamento">Em Andamento</option>
+                    <option value="Concluída">Concluída</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Data de Emissão</label>
+            <input type="date" id="osData" onchange="updateOS()">
+        </div>
+
+        <h2>Dados da Empresa</h2>
+        <div class="form-group"><input type="text" id="empNome" placeholder="Nome da Empresa" oninput="updateOS()"></div>
+        <div class="form-group"><input type="text" id="empContato" placeholder="Telefone / E-mail" oninput="updateOS()"></div>
+
+        <h2>Dados do Cliente</h2>
+        <div class="form-group"><input type="text" id="cliNome" placeholder="Nome do Cliente" oninput="updateOS()"></div>
+        <div class="form-group"><input type="text" id="cliContato" placeholder="Telefone / Endereço" oninput="updateOS()"></div>
+
+        <h2>Equipamento / Objeto do Serviço</h2>
+        <div class="form-group"><input type="text" id="servObj" placeholder="Ex: Notebook Dell Inspiron / Carro Placa ABC-123" oninput="updateOS()"></div>
+        <div class="form-group"><textarea id="servDefeito" placeholder="Defeito relatado / Descrição do problema" rows="2" oninput="updateOS()"></textarea></div>
+
+        <h2>Serviços e Peças</h2>
+        <div id="itemsContainer">
+            <div class="item-row">
+                <input type="text" name="desc" placeholder="Descrição do serviço ou peça" oninput="updateOS()">
+                <input type="number" name="qtd" placeholder="Qtd" value="1" oninput="updateOS()">
+                <input type="number" name="preco" placeholder="Preço (R$)" oninput="updateOS()">
+            </div>
+        </div>
+        <button type="button" class="btn-add" onclick="addItem()">+ Adicionar Linha</button>
+        <button onclick="window.print()">Imprimir / Salvar PDF</button>
+    </div>
+
+    <!-- Preview da O.S. -->
+    <div class="panel preview" id="printArea">
+        <div class="os-header">
+            <div>
+                <div class="os-title" id="viewEmpNome">Sua Empresa</div>
+                <div id="viewEmpContato">Contato da Empresa</div>
+            </div>
+            <div style="text-align: right;">
+                <div class="os-title">O.S. Nº <span id="viewOsNum">001</span></div>
+                <div>Status: <strong id="viewOsStatus">Em Aberto</strong></div>
+                <div>Emissão: <span id="viewOsData">--/--/----</span></div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="section-box">
+                <div class="section-title">Cliente</div>
+                <div id="viewCliNome" style="font-weight: bold;">Nome do Cliente</div>
+                <div id="viewCliContato">Contato do Cliente</div>
+            </div>
+            <div class="section-box">
+                <div class="section-title">Especificações do Serviço</div>
+                <div><strong>Objeto:</strong> <span id="viewServObj">-</span></div>
+                <div><strong>Problema:</strong> <span id="viewServDefeito">-</span></div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Descrição</th>
+                    <th style="width: 80px;">Qtd</th>
+                    <th style="width: 120px;">Unitário</th>
+                    <th style="width: 120px;">Total</th>
+                </tr>
+            </thead>
+            <tbody id="viewTableBody">
+                <!-- Preenchido via JS -->
+            </tbody>
+        </table>
+
+        <div class="total-row">
+            Total Geral: R$ <span id="viewTotal">0,00</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('osData').valueAsDate = new Date();
+
+    function addItem() {
+        const container = document.getElementById('itemsContainer');
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+            <input type="text" name="desc" placeholder="Descrição do serviço ou peça" oninput="updateOS()">
+            <input type="number" name="qtd" placeholder="Qtd" value="1" oninput="updateOS()">
+            <input type="number" name="preco" placeholder="Preço (R$)" oninput="updateOS()">
+        `;
+        container.appendChild(row);
+        updateOS();
+    }
+
+    function updateOS() {
+        document.getElementById('viewOsNum').innerText = document.getElementById('osNum').value || '---';
+        document.getElementById('viewOsStatus').innerText = document.getElementById('osStatus').value;
+        
+        const dataInput = document.getElementById('osData').value;
+        document.getElementById('viewOsData').innerText = dataInput ? new Date(dataInput).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '--/--/----';
+
+        document.getElementById('viewEmpNome').innerText = document.getElementById('empNome').value || 'Sua Empresa';
+        document.getElementById('viewEmpContato').innerText = document.getElementById('empContato').value || 'Contato da Empresa';
+        document.getElementById('viewCliNome').innerText = document.getElementById('cliNome').value || 'Nome do Cliente';
+        document.getElementById('viewCliContato').innerText = document.getElementById('cliContato').value || 'Contato do Cliente';
+        document.getElementById('viewServObj').innerText = document.getElementById('servObj').value || '-';
+        document.getElementById('viewServDefeito').innerText = document.getElementById('servDefeito').value || '-';
+
+        const rows = document.querySelectorAll('.item-row');
+        const tbody = document.getElementById('viewTableBody');
+        tbody.innerHTML = '';
+        let totalGeral = 0;
+
+        rows.forEach(row => {
+            const desc = row.querySelector('input[name="desc"]').value || 'Item sem descrição';
+            const qtd = parseFloat(row.querySelector('input[name="qtd"]').value) || 0;
+const preco = parseFloat(row.querySelector('input[name="preco"]').value) || 0;
+const totalItem = qtd * preco;
+totalGeral += totalItem;
+if(row.querySelector('input[name="desc"]').value || preco > 0) {
+const tr = document.createElement('tr');
+tr.innerHTML = `
+${desc}
+${qtd}
+R\(\){preco.toFixed(2).replace('.', ',')}
+R\(\){totalItem.toFixed(2).replace('.', ',')}
+`;
+tbody.appendChild(tr);
+}
+});
+if(tbody.innerHTML === '') {
+tbody.innerHTML = <tr><td colspan="4" style="text-align:center; color:#94a3b8;">Nenhum item adicionado</td></tr>;
+}
+document.getElementById('viewTotal').innerText = totalGeral.toFixed(2).replace('.', ',');
+}
+updateOS();
